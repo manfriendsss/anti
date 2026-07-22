@@ -830,7 +830,7 @@ export default function App() {
                   />
                 </div>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Khóa API được mã hóa Base64 trong LocalStorage và không bao giờ render mã thô vào thẻ DOM. Kiểm tra Inspect Element hoàn toàn bảo mật.
+                  Khóa API của bạn được lưu trữ và bảo mật cục bộ trên trình duyệt (LocalStorage).
                 </p>
               </div>
 
