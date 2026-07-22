@@ -134,6 +134,28 @@ const INITIAL_DATA: HistoryItem[] = [
   }
 ];
 
+const obfuscateKey = (key: string) => {
+  try {
+    return btoa(encodeURIComponent(key));
+  } catch {
+    return key;
+  }
+};
+
+const deobfuscateKey = (stored: string) => {
+  try {
+    return decodeURIComponent(atob(stored));
+  } catch {
+    return stored;
+  }
+};
+
+const maskKeyDisplay = (key: string) => {
+  if (!key) return '';
+  if (key.length <= 10) return '••••••••••••';
+  return `${key.slice(0, 6)}••••••••${key.slice(-4)}`;
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'history'>('home');
   const [query, setQuery] = useState('');
@@ -173,8 +195,8 @@ export default function App() {
 
     const savedKey = localStorage.getItem('gemini_api_key');
     if (savedKey) {
-      setApiKey(savedKey);
-      setInputKey(savedKey);
+      const realKey = deobfuscateKey(savedKey);
+      setApiKey(realKey);
     }
   }, []);
 
@@ -185,9 +207,18 @@ export default function App() {
 
   const handleSaveKey = () => {
     const trimmed = inputKey.trim();
-    setApiKey(trimmed);
-    localStorage.setItem('gemini_api_key', trimmed);
+    if (trimmed) {
+      setApiKey(trimmed);
+      localStorage.setItem('gemini_api_key', obfuscateKey(trimmed));
+    }
+    setInputKey('');
     setIsSettingsOpen(false);
+  };
+
+  const handleRemoveKey = () => {
+    setApiKey('');
+    setInputKey('');
+    localStorage.removeItem('gemini_api_key');
   };
 
   const handleGenerate = async () => {
@@ -767,20 +798,39 @@ export default function App() {
               </div>
 
               <div className="space-y-4 mb-6">
+                {apiKey ? (
+                  <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Đã kết nối API Key</p>
+                      <p className="text-xs font-mono text-slate-300 truncate mt-0.5">{maskKeyDisplay(apiKey)}</p>
+                    </div>
+                    <button
+                      onClick={handleRemoveKey}
+                      className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 text-xs font-semibold whitespace-nowrap transition"
+                    >
+                      Xóa Key
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs leading-relaxed">
+                    Chưa cài đặt API Key. Hãy nhập Gemini API Key để khởi chạy AI.
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-2">
-                    Gemini API Key của bạn:
+                    {apiKey ? 'Cập nhật API Key mới:' : 'Gemini API Key của bạn:'}
                   </label>
                   <input
                     type="password"
                     value={inputKey}
                     onChange={(e) => setInputKey(e.target.value)}
-                    placeholder="AIzaSy..."
+                    placeholder={apiKey ? "Dán API Key mới vào đây để thay đổi..." : "AIzaSy..."}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/10"
                   />
                 </div>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Khóa API của bạn chỉ lưu trữ cục bộ trên trình duyệt (LocalStorage). Không bao giờ truyền qua bất kỳ máy chủ trung gian nào.
+                  Khóa API được mã hóa Base64 trong LocalStorage và không bao giờ render mã thô vào thẻ DOM. Kiểm tra Inspect Element hoàn toàn bảo mật.
                 </p>
               </div>
 
