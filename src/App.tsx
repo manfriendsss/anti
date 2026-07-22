@@ -1,26 +1,28 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   BrainCircuit, 
   Loader2, 
-  Send,
-  Sparkles,
-  History,
-  Home,
-  Search,
-  Trash2,
-  Copy,
-  Check,
-  MessageSquareWarning,
+  Sparkles, 
+  History as HistoryIcon, 
+  Home, 
+  Search, 
+  Trash2, 
+  Copy, 
+  Check, 
+  MessageSquareWarning, 
   MessageSquare,
-  UserCheck,
-  Flame,
-  Skull,
-  ChevronDown,
-  Settings,
-  Key,
-  X,
-  AlertCircle
+  UserCheck, 
+  Flame, 
+  Skull, 
+  ChevronDown, 
+  Settings, 
+  Key, 
+  X, 
+  AlertCircle,
+  Volume2,
+  VolumeX,
+  ShieldAlert
 } from 'lucide-react';
 
 interface Responses {
@@ -42,17 +44,19 @@ const TONE_LABELS = {
   brutal: 'Cùn'
 };
 
+const TONE_SUBTITLES = {
+  polite: 'Phân tích logic & Khách quan',
+  sarcastic: 'Châm biếm & Đá xoáy',
+  brutal: 'Thực dụng & Vỗ mặt'
+};
+
 const TONE_ICONS = {
   polite: UserCheck,
   sarcastic: Flame,
   brutal: Skull
 };
 
-const TONE_COLORS = {
-  polite: 'text-emerald-700 bg-emerald-50 border-emerald-100',
-  sarcastic: 'text-sky-700 bg-sky-50 border-sky-100',
-  brutal: 'text-rose-700 bg-rose-50 border-rose-100'
-};
+
 
 const SYSTEM_PROMPTS = {
   polite: `Bạn là một chuyên gia tranh luận và phản biện sắc sảo. 
@@ -81,7 +85,7 @@ Yêu cầu bắt buộc:
 };
 
 const callGeminiAPI = async (query: string, tone: 'polite' | 'sarcastic' | 'brutal', apiKey: string) => {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -90,7 +94,7 @@ const callGeminiAPI = async (query: string, tone: 'polite' | 'sarcastic' | 'brut
       systemInstruction: { parts: [{ text: SYSTEM_PROMPTS[tone] }] },
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 300
+        maxOutputTokens: 2000
       }
     })
   });
@@ -120,563 +124,684 @@ const INITIAL_DATA: HistoryItem[] = [
   },
   {
     id: 'init_2',
-    query: 'Thiếu gì cách phát triển du lịch, đâu cứ phải xây resort bê tông cốt thép? Đó là tư duy ăn xổi, tư duy đớp!',
-    timestamp: Date.now() - 3000,
+    query: 'Làm thuê lương 10 triệu/tháng thì bao giờ mới mua được nhà ở Hà Nội?',
+    timestamp: Date.now() - 8000,
     responses: {
-      polite: 'Du lịch homestay nhỏ lẻ chỉ hợp với khách phượt ngắn ngày, không thể scale-up để giải quyết việc làm cho hàng vạn lao động hay tạo nguồn thu ngân sách lớn. Các tổ hợp nghỉ dưỡng sinh thái cao cấp đòi hỏi vốn hàng trăm triệu USD mà chỉ các tập đoàn lớn mới đủ năng lực triển khai bài bản.',
-      sarcastic: 'Vẽ ra lắm cách hay lắm nhưng hỏi cách cụ thể là gì thì ngậm tăm. Đòi làm du lịch mộc mạc không vốn, không hạ tầng thì định bắt dân nghèo quanh vùng bứt lá hái quả qua ngày qua tháng chắc?',
-      brutal: 'Toàn lý thuyết suông kiểu ngồi phòng máy lạnh hít khí trời bàn chuyện quốc gia đại sự. Mấy cái cách "thơ mộng" của mấy ông chỉ đủ cho bản thân đi phượt dăm bữa nửa tháng, còn hàng vạn người dưới chân đèo lấy gì đút vào mồm nếu không có hạ tầng dịch vụ?'
+      polite: 'Mức lương 10 triệu/tháng chỉ đủ chi trả mức sống cơ bản tại thành phố lớn. Để tích lũy mua tài sản lớn như bất động sản, đòi hỏi phải nâng cao năng lực để tăng thu nhập, đầu tư bản thân hoặc chuyển hướng sang các thị trường vùng ven có mức giá phù hợp hơn.',
+      sarcastic: 'Nếu chỉ biết đi làm 8 tiếng rồi về lướt TikTok với mức lương 10 triệu thì câu trả lời là... kiếp sau nhé. Muốn mua nhà bằng thu nhập đó mà không tăng năng lực hay tìm cách kinh doanh thêm thì đúng là ảo tưởng sức mạnh.',
+      brutal: 'Lương 10 triệu còn đòi mua nhà thủ đô? Bớt nằm mơ giữa ban ngày lại! Đi cày nâng trình hoặc tìm cách kinh doanh đi, chứ ngồi đó thắc mắc thì cả đời chỉ có nước ở trọ mà thôi.'
     }
   }
 ];
 
-// --- Copy Button Component ---
-const CopyButton = ({ text }: { text: string }) => {
-  const [copied, setCopied] = useState(false);
-  
-  const handleCopy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <button
-      onClick={handleCopy}
-      className={`flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-xl text-[10px] sm:text-xs font-bold border shadow-sm transition-all hover:scale-105 active:scale-95 ${copied ? 'border-emerald-200 text-emerald-600' : 'border-slate-200 text-slate-600'}`}
-    >
-      {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-      {copied ? 'Đã chép!' : 'Sao chép'}
-    </button>
-  );
-}
-
-// --- History Card Component ---
-const HistoryCard = ({ 
-  item, 
-  isExpanded, 
-  onToggle 
-}: { 
-  item: HistoryItem, 
-  isExpanded: boolean, 
-  onToggle: () => void 
-}) => {
-  const availableTones = (['polite', 'sarcastic', 'brutal'] as const).filter(t => item.responses[t]);
-  const [activeTab, setActiveTab] = useState<'polite' | 'sarcastic' | 'brutal'>(availableTones[0] || 'polite');
-
-  useEffect(() => {
-    if (!availableTones.includes(activeTab) && availableTones.length > 0) {
-      setActiveTab(availableTones[0]);
-    }
-  }, [item.responses, activeTab, availableTones]);
-
-  if (availableTones.length === 0) return null;
-  const ActiveIcon = TONE_ICONS[activeTab];
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white/80 backdrop-blur-lg rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 mb-4 group overflow-hidden transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]"
-    >
-      <div 
-        onClick={onToggle}
-        className="flex items-start gap-3 p-5 cursor-pointer relative overflow-hidden"
-      >
-        <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-amber-400 to-amber-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-        
-        <div className="bg-amber-100 p-2.5 rounded-2xl shrink-0 mt-0.5">
-          <MessageSquareWarning className="w-4 h-4 text-amber-600" />
-        </div>
-        
-        <div className="flex-1 pr-4">
-          <p className="text-sm font-bold text-slate-800 leading-snug line-clamp-2">
-            "{item.query}"
-          </p>
-        </div>
-
-        <motion.div 
-          animate={{ rotate: isExpanded ? 180 : 0 }} 
-          className="shrink-0 p-2 bg-slate-50 rounded-full"
-        >
-          <ChevronDown className="w-4 h-4 text-slate-400" />
-        </motion.div>
-      </div>
-
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="overflow-hidden"
-          >
-            <div className="px-5 pb-5 pt-1 border-t border-slate-100">
-              {/* Tabs */}
-              <div className="flex items-center gap-1.5 bg-slate-100/80 p-1.5 rounded-2xl mb-4 w-full mt-3">
-                {(['polite', 'sarcastic', 'brutal'] as const).map((tab) => {
-                  if (!item.responses[tab]) return null;
-                  return (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className="relative flex-1 py-2 text-xs font-bold rounded-xl transition-colors z-10 flex items-center justify-center gap-1.5"
-                    >
-                      {activeTab === tab && (
-                        <motion.div 
-                          layoutId={`tab-${item.id}`} 
-                          className="absolute inset-0 bg-white shadow-sm rounded-xl -z-10" 
-                        />
-                      )}
-                      <span className={activeTab === tab ? TONE_COLORS[tab].split(' ')[0] : 'text-slate-500'}>
-                        {TONE_LABELS[tab]}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Content */}
-              <AnimatePresence mode="wait">
-                <motion.div 
-                  key={activeTab}
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className={`p-4 rounded-2xl border relative overflow-hidden ${TONE_COLORS[activeTab]}`}
-                >
-                  <ActiveIcon className={`w-12 h-12 absolute -top-2 -right-2 opacity-5 ${TONE_COLORS[activeTab].split(' ')[0]}`} />
-                  <div className="flex items-center justify-between mb-3 relative z-10">
-                    <span className="text-[10px] font-black uppercase tracking-wider opacity-60">
-                      AI Phản biện
-                    </span>
-                    <CopyButton text={item.responses[activeTab]!} />
-                  </div>
-                  <p className="text-sm leading-relaxed font-medium relative z-10">
-                    {item.responses[activeTab]}
-                  </p>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
-};
-
 export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'history'>('home');
+  const [query, setQuery] = useState('');
+  const [selectedTone, setSelectedTone] = useState<'polite' | 'sarcastic' | 'brutal'>('sarcastic');
+  const [isGenerating, setIsGenerating] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [activeCardTone, setActiveCardTone] = useState<Record<string, 'polite' | 'sarcastic' | 'brutal'>>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   
-  // Settings / API Key State
+  // Settings & API Key Modal State
   const [apiKey, setApiKey] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
-  const [tempApiKey, setTempApiKey] = useState('');
-
-  // Home State
-  const [input, setInput] = useState('');
-  const [tone, setTone] = useState<'polite' | 'sarcastic' | 'brutal'>('polite');
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentResultId, setCurrentResultId] = useState<string | null>(null);
+  const [inputKey, setInputKey] = useState('');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // History State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
+  // Audio Speech state
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
 
-  // Load Init
   useEffect(() => {
-    const savedKey = localStorage.getItem('gemini_api_key');
-    if (savedKey) setApiKey(savedKey);
-
     const savedHistory = localStorage.getItem('ai_history_real');
     if (savedHistory) {
       try {
-        setHistory(JSON.parse(savedHistory));
+        const parsed = JSON.parse(savedHistory);
+        setHistory(parsed.length > 0 ? parsed : INITIAL_DATA);
+        if (parsed.length > 0) setExpandedId(parsed[0].id);
       } catch (e) {
-        console.error("Failed to parse history");
+        console.error(e);
+        setHistory(INITIAL_DATA);
+        setExpandedId(INITIAL_DATA[0].id);
       }
     } else {
       setHistory(INITIAL_DATA);
-      localStorage.setItem('ai_history_real', JSON.stringify(INITIAL_DATA));
+      setExpandedId(INITIAL_DATA[0].id);
+    }
+
+    const savedKey = localStorage.getItem('gemini_api_key');
+    if (savedKey) {
+      setApiKey(savedKey);
+      setInputKey(savedKey);
     }
   }, []);
 
-  const saveApiKey = () => {
-    setApiKey(tempApiKey);
-    localStorage.setItem('gemini_api_key', tempApiKey);
-    setShowSettings(false);
+  const saveHistory = (newHistory: HistoryItem[]) => {
+    setHistory(newHistory);
+    localStorage.setItem('ai_history_real', JSON.stringify(newHistory));
   };
 
-  const saveToHistory = (queryStr: string, selectedTone: 'polite' | 'sarcastic' | 'brutal', responseText: string) => {
-    let updatedHistory = [...history];
-    const existingIndex = updatedHistory.findIndex(
-      h => h.query.trim().toLowerCase() === queryStr.trim().toLowerCase()
-    );
-
-    let resultId = '';
-
-    if (existingIndex >= 0) {
-      updatedHistory[existingIndex] = {
-        ...updatedHistory[existingIndex],
-        timestamp: Date.now(),
-        responses: {
-          ...updatedHistory[existingIndex].responses,
-          [selectedTone]: responseText
-        }
-      };
-      const [item] = updatedHistory.splice(existingIndex, 1);
-      updatedHistory.unshift(item);
-      resultId = item.id;
-    } else {
-      resultId = Date.now().toString();
-      const newItem: HistoryItem = {
-        id: resultId,
-        query: queryStr.trim(),
-        responses: {
-          [selectedTone]: responseText
-        },
-        timestamp: Date.now()
-      };
-      updatedHistory.unshift(newItem);
-    }
-
-    setHistory(updatedHistory);
-    localStorage.setItem('ai_history_real', JSON.stringify(updatedHistory));
-    return resultId;
+  const handleSaveKey = () => {
+    const trimmed = inputKey.trim();
+    setApiKey(trimmed);
+    localStorage.setItem('gemini_api_key', trimmed);
+    setIsSettingsOpen(false);
   };
 
   const handleGenerate = async () => {
-    if (!input.trim()) return;
-    
+    if (!query.trim()) return;
+
     if (!apiKey) {
-      setTempApiKey('');
-      setShowSettings(true);
+      setIsSettingsOpen(true);
+      setErrorMsg('Vui lòng nhập Gemini API Key của bạn để bắt đầu sử dụng AI thật.');
       return;
     }
 
-    setIsLoading(true);
-    setCurrentResultId(null);
+    setIsGenerating(true);
     setErrorMsg(null);
-    
+
     try {
-      // Gọi API thật
-      const aiResponseText = await callGeminiAPI(input.trim(), tone, apiKey);
-      const newId = saveToHistory(input, tone, aiResponseText);
-      setCurrentResultId(newId);
-    } catch (error: any) {
-      setErrorMsg(error.message || "Đã xảy ra lỗi không xác định.");
+      const responseText = await callGeminiAPI(query, selectedTone, apiKey);
+
+      const existingIndex = history.findIndex(
+        h => h.query.toLowerCase().trim() === query.toLowerCase().trim()
+      );
+
+      let newHistory: HistoryItem[];
+      let targetId: string;
+
+      if (existingIndex !== -1) {
+        targetId = history[existingIndex].id;
+        newHistory = [...history];
+        newHistory[existingIndex] = {
+          ...newHistory[existingIndex],
+          responses: {
+            ...newHistory[existingIndex].responses,
+            [selectedTone]: responseText
+          }
+        };
+      } else {
+        targetId = Date.now().toString();
+        const newItem: HistoryItem = {
+          id: targetId,
+          query: query.trim(),
+          responses: {
+            [selectedTone]: responseText
+          },
+          timestamp: Date.now()
+        };
+        newHistory = [newItem, ...history];
+      }
+
+      saveHistory(newHistory);
+      setExpandedId(targetId);
+      setActiveCardTone(prev => ({ ...prev, [targetId]: selectedTone }));
+      setQuery('');
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || 'Đã có lỗi xảy ra khi gọi AI.');
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
     }
   };
 
-  const clearHistory = () => {
-    if(confirm('Bạn có chắc muốn xóa toàn bộ lịch sử? Các dữ liệu gốc cũng sẽ bị xóa.')) {
-      setHistory([]);
-      localStorage.removeItem('ai_history_real');
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = history.filter(item => item.id !== id);
+    saveHistory(updated);
+    if (expandedId === id) {
+      setExpandedId(updated.length > 0 ? updated[0].id : null);
     }
   };
 
-  const filteredHistory = history.filter(item => {
-    const term = searchQuery.toLowerCase();
-    const matchQuery = item.query.toLowerCase().includes(term);
-    const matchResponses = Object.values(item.responses).some(res => res?.toLowerCase().includes(term));
-    return matchQuery || matchResponses;
-  });
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
-  const currentResultItem = history.find(h => h.id === currentResultId);
+  const handleSpeak = (text: string, id: string) => {
+    if ('speechSynthesis' in window) {
+      if (speakingId === id) {
+        window.speechSynthesis.cancel();
+        setSpeakingId(null);
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'vi-VN';
+      utterance.rate = 1.0;
+      utterance.onend = () => setSpeakingId(null);
+      utterance.onerror = () => setSpeakingId(null);
+      setSpeakingId(id);
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const filteredHistory = history.filter(item => 
+    item.query.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    Object.values(item.responses).some(r => r?.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
-    <div className="min-h-[100dvh] bg-[#F8F9FC] text-slate-800 font-sans antialiased selection:bg-emerald-200 flex flex-col relative overflow-x-hidden">
-      
-      {/* Background Decor */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 via-teal-600 to-lime-500 opacity-[0.03]"></div>
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-emerald-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
-        <div className="absolute top-40 left-0 -ml-20 w-72 h-72 bg-lime-400 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
-      </div>
+    <div className="min-h-screen bg-[#080C14] text-slate-100 flex flex-col relative pb-32 overflow-x-hidden selection:bg-emerald-500/20 selection:text-emerald-300">
+      {/* Ambient background glows */}
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[500px] bg-gradient-to-b from-emerald-600/10 via-teal-500/5 to-transparent blur-3xl pointer-events-none -z-10" />
+      <div className="fixed -bottom-32 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
 
-      {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-3xl mx-auto px-4 pt-8 pb-32 relative z-10">
-        
-        {/* --- TAB: HOME --- */}
-        <AnimatePresence mode="wait">
-          {activeTab === 'home' && (
-            <motion.div
-              key="home"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
+      {/* Top Header */}
+      <header className="sticky top-0 z-40 bg-[#080C14]/80 backdrop-blur-md border-b border-slate-800/60 px-4 py-4">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 p-[1px] shadow-lg shadow-emerald-500/20">
+              <div className="w-full h-full bg-slate-950 rounded-[11px] flex items-center justify-center">
+                <BrainCircuit className="w-5 h-5 text-emerald-400" />
+              </div>
+            </div>
+            <div>
+              <h1 className="text-lg font-bold bg-gradient-to-r from-slate-100 via-emerald-200 to-teal-400 bg-clip-text text-transparent tracking-tight">
+                AntiDebate
+              </h1>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                  Gemini 3.6 Engine
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 transition-all flex items-center gap-2 group"
+            title="Cấu hình API Key"
+          >
+            <Settings className="w-4 h-4 transition-transform group-hover:rotate-45" />
+            <span className="text-xs font-semibold hidden sm:inline">
+              {apiKey ? 'Đã kết nối API' : 'Cấu hình API'}
+            </span>
+            {!apiKey && (
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* Main Container */}
+      <main className="flex-1 max-w-3xl w-full mx-auto px-4 pt-6">
+        {/* Banner Alert if No API Key */}
+        {!apiKey && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between gap-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <p className="text-xs text-amber-200/90 leading-relaxed">
+                Chưa cài đặt Gemini API Key. Nhấn nút cài đặt để kết nối và bắt đầu phản biện thực tế.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="px-3 py-1.5 rounded-lg bg-amber-500 text-slate-950 text-xs font-bold whitespace-nowrap hover:bg-amber-400 transition"
             >
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex-1 text-center pl-8">
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="inline-flex items-center gap-2 bg-white/60 backdrop-blur-xl px-4 py-1.5 rounded-full text-xs font-bold text-emerald-900 border border-white/50 shadow-sm"
-                  >
-                    <Sparkles className="w-4 h-4 text-emerald-600" />
-                    <span>Trợ Thủ Phản Biện Sắc Bén</span>
-                  </motion.div>
-                </div>
-                <button 
-                  onClick={() => { setTempApiKey(apiKey); setShowSettings(true); }}
-                  className="p-2 bg-white/80 backdrop-blur-md rounded-full shadow-sm text-slate-400 hover:text-emerald-600 border border-slate-200 transition-all active:scale-95"
-                >
-                  <Settings className="w-5 h-5" />
-                </button>
+              Cài ngay
+            </button>
+          </motion.div>
+        )}
+
+        {/* Global Error Notice */}
+        {errorMsg && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-start gap-3"
+          >
+            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold text-rose-200">Lỗi thực thi</p>
+              <p className="mt-0.5 opacity-90">{errorMsg}</p>
+            </div>
+            <button onClick={() => setErrorMsg(null)} className="text-rose-400 hover:text-rose-200">
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+
+        {activeTab === 'home' ? (
+          <div className="space-y-6">
+            {/* Input Card */}
+            <div className="glass-card rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+              <div className="flex items-center gap-2 mb-4 text-emerald-400 text-xs font-semibold tracking-wider uppercase">
+                <MessageSquareWarning className="w-4 h-4" />
+                <span>Nhập câu luận điệu cần bóc phốt</span>
               </div>
 
-              <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-5 md:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white">
-                <div className="flex items-center gap-2 mb-4">
-                  <BrainCircuit className="w-6 h-6 text-emerald-600" />
-                  <h2 className="text-lg font-bold text-slate-800">Nhập câu luận điệu</h2>
-                </div>
-                
-                <div className="space-y-5">
-                  <div className="relative">
-                    <textarea
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      placeholder="Dán câu chửi, luận điệu của đối phương vào đây..."
-                      className="w-full bg-white/80 border border-slate-200 rounded-2xl p-4 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all min-h-[120px] resize-none shadow-inner leading-relaxed"
-                    />
-                  </div>
-                  
-                  <div>
-                    <p className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Chọn sắc thái phản biện</p>
-                    <div className="flex bg-slate-100/80 p-1.5 rounded-2xl w-full">
-                      {(['polite', 'sarcastic', 'brutal'] as const).map((t) => (
-                        <button
-                          key={t}
-                          onClick={() => setTone(t)}
-                          className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all relative ${tone === t ? 'text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                          {tone === t && (
-                            <motion.div layoutId="ai-tone" className="absolute inset-0 bg-white rounded-xl shadow-sm -z-10" />
-                          )}
-                          <span className={tone === t ? (t === 'polite' ? 'text-emerald-700' : t === 'sarcastic' ? 'text-sky-700' : 'text-rose-700') : ''}>
-                            {TONE_LABELS[t]}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {errorMsg && (
-                    <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs font-semibold flex items-start gap-2 border border-red-100">
-                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <span>{errorMsg}</span>
-                    </div>
-                  )}
-
-                  <button 
-                    onClick={handleGenerate}
-                    disabled={!input.trim() || isLoading}
-                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-6 py-4 rounded-2xl text-base font-bold shadow-lg shadow-emerald-200 hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50 disabled:active:scale-100"
-                  >
-                    {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                    {isLoading ? 'Đang phân tích...' : 'Phản biện ngay'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Result Area */}
-              <AnimatePresence mode="wait">
-                {isLoading && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mt-6 p-5 bg-white/60 backdrop-blur-md rounded-3xl space-y-3 overflow-hidden border border-white"
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <BrainCircuit className="w-5 h-5 text-emerald-400 animate-pulse" />
-                      <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest animate-pulse">AI đang suy nghĩ logic...</span>
-                    </div>
-                    <div className="h-4 bg-slate-200/60 rounded-full w-3/4 animate-pulse"></div>
-                    <div className="h-4 bg-slate-200/60 rounded-full w-full animate-pulse"></div>
-                    <div className="h-4 bg-slate-200/60 rounded-full w-5/6 animate-pulse"></div>
-                  </motion.div>
-                )}
-
-                {currentResultItem && !isLoading && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-6"
-                  >
-                    <div className="flex items-center gap-2 mb-3 px-2">
-                      <MessageSquare className="w-5 h-5 text-emerald-600" />
-                      <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-wide">Kết quả trả lời</h3>
-                    </div>
-                    <HistoryCard 
-                      item={currentResultItem} 
-                      isExpanded={true} 
-                      onToggle={() => {}} 
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-          )}
-
-          {/* --- TAB: HISTORY --- */}
-          {activeTab === 'history' && (
-            <motion.div
-              key="history"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="flex items-center justify-between mb-6 px-2">
-                <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">Lịch sử</h2>
-                {history.length > 0 && (
-                  <button 
-                    onClick={clearHistory}
-                    className="text-xs font-bold text-rose-500 bg-rose-50 px-3 py-1.5 rounded-full flex items-center gap-1.5 active:scale-95 transition-transform"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Xóa hết
-                  </button>
-                )}
-              </div>
-
-              <div className="relative mb-6">
-                <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Tìm kiếm nội dung đã phản biện..."
-                  className="w-full bg-white border border-slate-200 rounded-2xl pl-11 pr-4 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 shadow-sm"
+              <div className="relative mb-5">
+                <textarea
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Ví dụ: 'Thế mày đi du lịch thích đi tham quan thắng cảnh hay chui vào resort hơn?'"
+                  rows={4}
+                  className="w-full bg-slate-950/80 border border-slate-800/80 rounded-2xl p-4 text-slate-100 text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none leading-relaxed"
                 />
               </div>
 
-              <div className="space-y-4">
-                <AnimatePresence mode="popLayout">
-                  {filteredHistory.map((item) => (
-                    <HistoryCard 
-                      key={item.id} 
-                      item={item} 
-                      isExpanded={expandedHistoryId === item.id}
-                      onToggle={() => setExpandedHistoryId(expandedHistoryId === item.id ? null : item.id)}
-                    />
-                  ))}
-                </AnimatePresence>
-                
-                {filteredHistory.length === 0 && (
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center py-20"
-                  >
-                    <History className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-                    <p className="text-slate-400 text-sm font-medium">Không tìm thấy dữ liệu.</p>
-                  </motion.div>
-                )}
+              {/* Tone Selection Pills */}
+              <div className="mb-6">
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">
+                  Chọn sắc thái phản biện
+                </label>
+                <div className="grid grid-cols-3 gap-2 bg-slate-950/60 p-1.5 rounded-2xl border border-slate-800/60 relative">
+                  {(['polite', 'sarcastic', 'brutal'] as const).map((tone) => {
+                    const Icon = TONE_ICONS[tone];
+                    const isSelected = selectedTone === tone;
+                    return (
+                      <button
+                        key={tone}
+                        type="button"
+                        onClick={() => setSelectedTone(tone)}
+                        className={`relative z-10 py-3 px-2 rounded-xl text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition-all duration-200 ${
+                          isSelected ? 'text-emerald-300 font-bold' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {isSelected && (
+                          <motion.div
+                            layoutId="tonePill"
+                            className="absolute inset-0 bg-slate-800/90 border border-emerald-500/30 rounded-xl shadow-lg shadow-emerald-950/50 -z-10"
+                            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                          />
+                        )}
+                        <Icon className={`w-4 h-4 ${isSelected ? 'text-emerald-400' : 'opacity-70'}`} />
+                        <span>{TONE_LABELS[tone]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-2 text-center italic">
+                  {TONE_SUBTITLES[selectedTone]}
+                </p>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+
+              {/* Generate Button */}
+              <button
+                onClick={handleGenerate}
+                disabled={isGenerating || !query.trim()}
+                className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-sm shadow-xl shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2.5 transition-all active:scale-[0.99]"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>AI đang vò đầu bẻ luận điểm...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 fill-slate-950" />
+                    <span>Phản Biện Sắc Bén ngay</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Current Result Display (Accordion format if available) */}
+            {history.length > 0 && expandedId === history[0].id && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="glass-card rounded-3xl p-5 border-l-4 border-l-emerald-500 shadow-2xl relative"
+              >
+                <div className="flex items-center justify-between gap-4 mb-3">
+                  <span className="text-[11px] font-bold text-emerald-400 tracking-wider uppercase bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+                    Kết quả vừa phản biện
+                  </span>
+                </div>
+
+                <p className="text-sm font-semibold text-slate-200 mb-4 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/60 leading-relaxed italic">
+                  "{history[0].query}"
+                </p>
+
+                {/* Tone Switcher Tabs for Current Card */}
+                <div className="flex border-b border-slate-800/80 mb-4 overflow-x-auto no-scrollbar gap-1">
+                  {(['polite', 'sarcastic', 'brutal'] as const).map((t) => {
+                    const hasResponse = !!history[0].responses[t];
+                    const curTone = activeCardTone[history[0].id] || selectedTone;
+                    const isActive = curTone === t;
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => {
+                          if (!hasResponse && apiKey && !isGenerating) {
+                            setSelectedTone(t);
+                            setQuery(history[0].query);
+                          } else {
+                            setActiveCardTone(prev => ({ ...prev, [history[0].id]: t }));
+                          }
+                        }}
+                        className={`py-2 px-3 text-xs font-semibold rounded-t-xl transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+                          isActive 
+                            ? 'border-emerald-400 text-emerald-300 bg-emerald-500/5' 
+                            : 'border-transparent text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <span>{TONE_LABELS[t]}</span>
+                        {!hasResponse && (
+                          <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">Tạo mới</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Response Text */}
+                {(() => {
+                  const curTone = activeCardTone[history[0].id] || selectedTone;
+                  const responseText = history[0].responses[curTone];
+                  return responseText ? (
+                    <div className="relative group bg-slate-950/40 p-4 rounded-2xl border border-slate-800/50">
+                      <p className="text-sm text-slate-200 leading-relaxed font-normal whitespace-pre-wrap">
+                        {responseText}
+                      </p>
+                      
+                      <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-slate-800/50">
+                        <button
+                          onClick={() => handleSpeak(responseText, `home_${curTone}`)}
+                          className={`p-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition ${
+                            speakingId === `home_${curTone}` 
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                              : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800'
+                          }`}
+                        >
+                          {speakingId === `home_${curTone}` ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                          <span>{speakingId === `home_${curTone}` ? 'Dừng đọc' : 'Đọc câu này'}</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleCopy(responseText, `home_${curTone}`)}
+                          className="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-emerald-300 text-xs font-medium flex items-center gap-1.5 transition"
+                        >
+                          {copiedId === `home_${curTone}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedId === `home_${curTone}` ? 'Đã sao chép' : 'Sao chép'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-slate-500 text-xs italic">
+                      Chưa có phản biện ở sắc thái này. Nhấn tab trên để yêu cầu AI tạo mới.
+                    </div>
+                  );
+                })()}
+              </motion.div>
+            )}
+          </div>
+        ) : (
+          /* History View */
+          <div className="space-y-4">
+            {/* Search Bar */}
+            <div className="relative mb-6">
+              <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Tìm kiếm lịch sử phản biện..."
+                className="w-full bg-slate-900/80 border border-slate-800/80 rounded-2xl pl-11 pr-4 py-3.5 text-slate-100 text-sm placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/10 transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Accordion History List */}
+            {filteredHistory.length === 0 ? (
+              <div className="text-center py-12 text-slate-500 text-sm glass-card rounded-3xl">
+                Không tìm thấy câu phản biện nào phù hợp.
+              </div>
+            ) : (
+              filteredHistory.map((item) => {
+                const isExpanded = expandedId === item.id;
+                const curTone = activeCardTone[item.id] || 'sarcastic';
+                const currentResponse = item.responses[curTone] || Object.values(item.responses)[0];
+
+                return (
+                  <motion.div
+                    key={item.id}
+                    layout
+                    className={`glass-card rounded-2xl overflow-hidden border transition-all ${
+                      isExpanded ? 'border-emerald-500/30 shadow-xl' : 'border-slate-800/60 hover:border-slate-700'
+                    }`}
+                  >
+                    {/* Header Bar */}
+                    <div
+                      onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                      className="p-4 cursor-pointer flex items-center justify-between gap-3 select-none hover:bg-slate-900/40 transition"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0">
+                          <MessageSquare className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <h3 className="text-sm font-semibold text-slate-200 truncate">
+                          {item.query}
+                        </h3>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={(e) => handleDelete(item.id, e)}
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
+                          title="Xóa"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-emerald-400' : ''}`} />
+                      </div>
+                    </div>
+
+                    {/* Accordion Content */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="border-t border-slate-800/60 p-4 bg-slate-950/40"
+                        >
+                          {/* Tone Switcher Tabs */}
+                          <div className="flex border-b border-slate-800/80 mb-4 overflow-x-auto no-scrollbar gap-1">
+                            {(['polite', 'sarcastic', 'brutal'] as const).map((t) => {
+                              const hasResp = !!item.responses[t];
+                              const isActive = curTone === t;
+                              return (
+                                <button
+                                  key={t}
+                                  onClick={() => {
+                                    if (hasResp) {
+                                      setActiveCardTone(prev => ({ ...prev, [item.id]: t }));
+                                    } else if (apiKey && !isGenerating) {
+                                      setSelectedTone(t);
+                                      setQuery(item.query);
+                                      setActiveTab('home');
+                                    }
+                                  }}
+                                  className={`py-2 px-3 text-xs font-semibold rounded-t-xl transition-all border-b-2 flex items-center gap-1.5 whitespace-nowrap ${
+                                    isActive 
+                                      ? 'border-emerald-400 text-emerald-300 bg-emerald-500/5' 
+                                      : 'border-transparent text-slate-400 hover:text-slate-200'
+                                  }`}
+                                >
+                                  <span>{TONE_LABELS[t]}</span>
+                                  {!hasResp && (
+                                    <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">Tạo mới</span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Active Response Text */}
+                          {currentResponse ? (
+                            <div className="relative group bg-slate-900/60 p-4 rounded-xl border border-slate-800/80">
+                              <p className="text-sm text-slate-200 leading-relaxed font-normal whitespace-pre-wrap">
+                                {currentResponse}
+                              </p>
+                              
+                              <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-slate-800/50">
+                                <button
+                                  onClick={() => handleSpeak(currentResponse, `${item.id}_${curTone}`)}
+                                  className={`p-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition ${
+                                    speakingId === `${item.id}_${curTone}` 
+                                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                                      : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800'
+                                  }`}
+                                >
+                                  {speakingId === `${item.id}_${curTone}` ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                                  <span>{speakingId === `${item.id}_${curTone}` ? 'Dừng đọc' : 'Đọc câu này'}</span>
+                                </button>
+
+                                <button
+                                  onClick={() => handleCopy(currentResponse, `${item.id}_${curTone}`)}
+                                  className="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-emerald-300 text-xs font-medium flex items-center gap-1.5 transition"
+                                >
+                                  {copiedId === `${item.id}_${curTone}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                                  <span>{copiedId === `${item.id}_${curTone}` ? 'Đã sao chép' : 'Sao chép'}</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-center py-4 text-slate-500 text-xs italic">
+                              Chưa có phản biện ở sắc thái này. Nhấp vào tab để sang trang tạo mới.
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
+        )}
       </main>
 
-      {/* --- STICKY BOTTOM MENU (FULL WIDTH) --- */}
-      <div className="fixed bottom-0 left-0 w-full z-50 pointer-events-none">
-        <div className="w-full bg-white/90 backdrop-blur-2xl px-4 py-2 pb-safe border-t border-slate-200/60 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] pointer-events-auto flex items-center justify-around">
-          <button 
+      {/* Floating Bottom Dock Navigation */}
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-full max-w-md px-4">
+        <div className="bg-slate-900/90 backdrop-blur-2xl border border-slate-800/90 rounded-full p-2 shadow-2xl shadow-black/80 flex items-center justify-around relative">
+          <button
             onClick={() => setActiveTab('home')}
-            className={`flex-1 max-w-[120px] flex flex-col items-center justify-center py-2 rounded-2xl transition-all relative ${activeTab === 'home' ? 'text-emerald-700' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`flex-1 py-3 px-4 rounded-full text-xs font-semibold flex items-center justify-center gap-2 transition-all relative z-10 ${
+              activeTab === 'home' ? 'text-emerald-300 font-bold' : 'text-slate-400 hover:text-slate-200'
+            }`}
           >
             {activeTab === 'home' && (
-              <motion.div layoutId="nav-pill" className="absolute inset-0 bg-emerald-50 rounded-2xl -z-10" />
+              <motion.div
+                layoutId="dockPill"
+                className="absolute inset-0 bg-emerald-500/15 border border-emerald-500/30 rounded-full -z-10 shadow-lg shadow-emerald-500/10"
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              />
             )}
-            <Home className={`w-6 h-6 mb-1 ${activeTab === 'home' ? 'fill-emerald-100' : ''}`} />
-            <span className="text-[11px] font-extrabold tracking-wide">Trang chủ</span>
+            <Home className={`w-4 h-4 ${activeTab === 'home' ? 'text-emerald-400' : ''}`} />
+            <span>Phản Biện</span>
           </button>
-          
-          <button 
+
+          <button
             onClick={() => setActiveTab('history')}
-            className={`flex-1 max-w-[120px] flex flex-col items-center justify-center py-2 rounded-2xl transition-all relative ${activeTab === 'history' ? 'text-emerald-700' : 'text-slate-400 hover:text-slate-600'}`}
+            className={`flex-1 py-3 px-4 rounded-full text-xs font-semibold flex items-center justify-center gap-2 transition-all relative z-10 ${
+              activeTab === 'history' ? 'text-emerald-300 font-bold' : 'text-slate-400 hover:text-slate-200'
+            }`}
           >
             {activeTab === 'history' && (
-              <motion.div layoutId="nav-pill" className="absolute inset-0 bg-emerald-50 rounded-2xl -z-10" />
+              <motion.div
+                layoutId="dockPill"
+                className="absolute inset-0 bg-emerald-500/15 border border-emerald-500/30 rounded-full -z-10 shadow-lg shadow-emerald-500/10"
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              />
             )}
-            <History className={`w-6 h-6 mb-1 ${activeTab === 'history' ? 'fill-emerald-100' : ''}`} />
-            <span className="text-[11px] font-extrabold tracking-wide">Lịch sử</span>
+            <HistoryIcon className={`w-4 h-4 ${activeTab === 'history' ? 'text-emerald-400' : ''}`} />
+            <span>Lịch Sử</span>
           </button>
         </div>
-      </div>
+      </nav>
 
-      {/* --- SETTINGS MODAL --- */}
+      {/* Settings Modal (Gemini API Key) */}
       <AnimatePresence>
-        {showSettings && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-              onClick={() => setShowSettings(false)}
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl relative z-10"
+        {isSettingsOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setIsSettingsOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl relative overflow-hidden"
             >
-              <button 
-                onClick={() => setShowSettings(false)}
-                className="absolute top-4 right-4 p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-              
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl">
-                  <Key className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                    <Key className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-100 text-base">Cấu hình API Key</h3>
+                    <p className="text-xs text-slate-400">Kết nối Google Gemini AI</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-800">Cấu hình AI</h3>
-                  <p className="text-xs text-slate-500">Nhập Gemini API Key để kích hoạt AI thật.</p>
-                </div>
+                <button
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="p-1.5 rounded-xl bg-slate-800 text-slate-400 hover:text-slate-200"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-4 mb-6">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">
-                    Google Gemini API Key
+                  <label className="block text-xs font-semibold text-slate-300 mb-2">
+                    Gemini API Key của bạn:
                   </label>
                   <input
                     type="password"
-                    value={tempApiKey}
-                    onChange={(e) => setTempApiKey(e.target.value)}
+                    value={inputKey}
+                    onChange={(e) => setInputKey(e.target.value)}
                     placeholder="AIzaSy..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-mono"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/10"
                   />
-                  <p className="text-[11px] text-slate-400 mt-2">
-                    Lấy key miễn phí tại <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-emerald-600 font-bold hover:underline">Google AI Studio</a>. Dữ liệu chỉ lưu trên máy bạn.
-                  </p>
                 </div>
-                
-                <button 
-                  onClick={saveApiKey}
-                  className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-xl hover:bg-slate-800 active:scale-[0.98] transition-all"
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Khóa API của bạn chỉ lưu trữ cục bộ trên trình duyệt (LocalStorage). Không bao giờ truyền qua bất kỳ máy chủ trung gian nào.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-slate-200 transition"
                 >
-                  Lưu thiết lập
+                  Hủy
+                </button>
+                <button
+                  onClick={handleSaveKey}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition"
+                >
+                  Lưu cấu hình
                 </button>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
-      
     </div>
   );
 }
