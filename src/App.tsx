@@ -181,8 +181,19 @@ export default function App() {
     if (savedHistory) {
       try {
         const parsed = JSON.parse(savedHistory);
-        setHistory(parsed.length > 0 ? parsed : INITIAL_DATA);
-        if (parsed.length > 0) setExpandedId(parsed[0].id);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const sanitized = parsed.map((item, idx) => ({
+            id: item && item.id ? String(item.id) : `hist_${idx}_${Date.now()}`,
+            query: item && item.query ? String(item.query) : '',
+            timestamp: item && item.timestamp ? Number(item.timestamp) : Date.now(),
+            responses: (item && item.responses && typeof item.responses === 'object') ? item.responses : {}
+          }));
+          setHistory(sanitized);
+          setExpandedId(sanitized[0].id);
+        } else {
+          setHistory(INITIAL_DATA);
+          setExpandedId(INITIAL_DATA[0].id);
+        }
       } catch (e) {
         console.error(e);
         setHistory(INITIAL_DATA);
@@ -311,10 +322,14 @@ export default function App() {
     }
   };
 
-  const filteredHistory = history.filter(item => 
-    item.query.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    Object.values(item.responses).some(r => r?.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredHistory = history.filter(item => {
+    const q = item && item.query ? item.query.toLowerCase() : '';
+    const sq = searchQuery.toLowerCase();
+    const matchesQuery = q.includes(sq);
+    const respValues = (item && item.responses && typeof item.responses === 'object') ? Object.values(item.responses) : [];
+    const matchesResponses = respValues.some(r => typeof r === 'string' && r.toLowerCase().includes(sq));
+    return matchesQuery || matchesResponses;
+  });
 
   return (
     <div className="min-h-screen bg-[#080C14] text-slate-100 flex flex-col relative pb-32 overflow-x-hidden selection:bg-emerald-500/20 selection:text-emerald-300">
@@ -499,7 +514,7 @@ export default function App() {
                 {/* Tone Switcher Tabs for Current Card */}
                 <div className="flex border-b border-slate-800/80 mb-4 overflow-x-auto no-scrollbar gap-1">
                   {(['polite', 'sarcastic', 'brutal'] as const).map((t) => {
-                    const hasResponse = !!history[0].responses[t];
+                    const hasResponse = !!(history[0]?.responses && history[0].responses[t]);
                     const curTone = activeCardTone[history[0].id] || selectedTone;
                     const isActive = curTone === t;
                     return (
@@ -531,7 +546,7 @@ export default function App() {
                 {/* Response Text */}
                 {(() => {
                   const curTone = activeCardTone[history[0].id] || selectedTone;
-                  const responseText = history[0].responses[curTone];
+                  const responseText = history[0]?.responses ? history[0].responses[curTone] : undefined;
                   return responseText ? (
                     <div className="relative group bg-slate-950/40 p-4 rounded-2xl border border-slate-800/50">
                       <p className="text-sm text-slate-200 leading-relaxed font-normal whitespace-pre-wrap">
@@ -601,7 +616,7 @@ export default function App() {
               filteredHistory.map((item) => {
                 const isExpanded = expandedId === item.id;
                 const curTone = activeCardTone[item.id] || 'sarcastic';
-                const currentResponse = item.responses[curTone] || Object.values(item.responses)[0];
+                const currentResponse = item.responses ? (item.responses[curTone] || Object.values(item.responses)[0]) : undefined;
 
                 return (
                   <motion.div
@@ -649,7 +664,7 @@ export default function App() {
                           {/* Tone Switcher Tabs */}
                           <div className="flex border-b border-slate-800/80 mb-4 overflow-x-auto no-scrollbar gap-1">
                             {(['polite', 'sarcastic', 'brutal'] as const).map((t) => {
-                              const hasResp = !!item.responses[t];
+                              const hasResp = !!(item?.responses && item.responses[t]);
                               const isActive = curTone === t;
                               return (
                                 <button
